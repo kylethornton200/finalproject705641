@@ -18,6 +18,11 @@ Congressional Research Service (CRS) Reports Data Collection [EveryCRSReport.com
 # Import scraping functions
 from scrape_data import get_report_content
 
+# Read the CSV file
+df = pd.read_csv('crs_reports.csv', header=0, names=[
+     'number', 'url', 'sha1', 'latestPubDate',
+     'title', 'latestPDF', 'latestHTML'])
+
 # Process reports
 text, url = get_report_content(df.iloc[0])
 ```
