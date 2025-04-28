@@ -2,10 +2,10 @@
 Final Project
 
 ## Dataset
-CRS Reports Data Collection [EveryCRSReport.com](https://www.everycrsreport.com/)
+Congressional Research Service (CRS) Reports Data Collection [EveryCRSReport.com](https://www.everycrsreport.com/)
 - 22,195 CRS reports available.
   
-### Tools for scraping Congressional Research Service (CRS) reports text data.
+### Tools for scraping CRS reports text data.
 ```markdown
 ├── crs_reports.csv      # Dataset containing CRS report metadata
 ├── requirements.txt     # Required Python packages for scraping
