@@ -4,6 +4,24 @@ from bs4 import BeautifulSoup
 import time
 import os
 
+from sentence_transformers import SentenceTransformer, util
+from langchain.schema import Document
+import faiss
+import numpy as np
+from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_community.vectorstores import FAISS
+from langchain_community.docstore.in_memory import InMemoryDocstore
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+
+milestones = [1000, 2500, 5000, 7500, 10000, 12500, 15000, 17500, 20000, 22500, 25000, 27500, 30000]
+max_reports = 30000
+
+class EmbeddedClass:
+    def __init__(self):
+        self.model = SentenceTransformer('all-MiniLM-L6-v2')
+        self.embeddings = []
+        self.docs = []
+
 
 def scrape_crs_reports():
     """
@@ -42,7 +60,6 @@ def fetch_report_content(url, report_id):
     # Add polite delay
     time.sleep(1)
 
-    print(f"Fetching report: {report_id}")
     response = requests.get(url)
     response.raise_for_status()
 
@@ -58,7 +75,7 @@ def fetch_report_content(url, report_id):
     return full_text
 
 
-def get_report_content(row):
+def get_report_content(row, embedder):
     """
         Process a single report row and retrieve its content.
         Args:
@@ -74,7 +91,53 @@ def get_report_content(row):
 
     # Fetch the content
     full_text = fetch_report_content(html_url, row['number'])
+    docs = embed_page(html_url, full_text, embedder)
+    embedder.docs.extend(docs)
     return full_text, html_url
+
+def get_all_reports(df, embedder):
+    for i, row in enumerate(df.itertuples(index=False)):
+
+        if max_reports is not None and i >= max_reports:
+            print(f"[INFO] Early stop reached at {i} rows.")
+            break
+
+        full_text, html_url = get_report_content(row._asdict(), embedder)
+
+        if not full_text:
+            print(f"[WARN] Row {i}: failed to fetch report (url={html_url})")
+
+        if i in milestones:
+            print(f"Reached milestone: collected {i} reports so far")
+            
+
+
+def embed_page(url, raw_text, embedder: EmbeddedClass):
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
+    chunks = text_splitter.split_text(raw_text)
+    vecs   = embedder.model.encode(chunks, show_progress_bar=False)
+    embedder.embeddings.extend(vecs)
+
+    docs = [Document(page_content=chunk, metadata={"source_url": url}) for chunk in chunks]
+    return docs
+
+def create_vector_store(docs: list[Document], embedder: EmbeddedClass, store_name="CRS_Reports"):
+    embedding_matrix = np.asarray(embedder.embeddings, dtype="float32")
+    index = faiss.IndexFlatL2(embedding_matrix.shape[1])
+    index.add(embedding_matrix)
+
+    docstore            = InMemoryDocstore({str(i): docs[i] for i in range(len(docs))})
+    index_to_docstore   = {i: str(i) for i in range(len(docs))}
+
+    embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+    vstore = FAISS(
+        embedding_function   = embeddings,
+        index                = index,
+        docstore             = docstore,
+        index_to_docstore_id = index_to_docstore
+    )
+    vstore.save_local(store_name)
+    return vstore
 
 # Example usage:
 if __name__ == "__main__":
@@ -84,7 +147,12 @@ if __name__ == "__main__":
         'title', 'latestPDF', 'latestHTML'
     ])
 
-    # Process first report as example
-    text, url = get_report_content(df.iloc[0])
-    if text:
-        print(f"Successfully processed report from: {url}")
+    embedder = EmbeddedClass()
+    print("="*12+"Starting scrape of crs reports" + "="*12)
+    get_all_reports(df, embedder)
+
+    print("="*12+"Creating vector store for embedding indexes" + "="*12)
+    v_store = create_vector_store(embedder.docs, embedder)
+
+    if v_store:
+        print(f"Successfully created vector db CRS_Reports")
