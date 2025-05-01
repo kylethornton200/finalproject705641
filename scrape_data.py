@@ -45,34 +45,43 @@ def scrape_crs_reports():
     print("Successfully downloaded CSV file")
     return df
 
-def fetch_report_content(url, report_id):
+def fetch_report_content(url):
     """
     Fetch and extract text content from a single CRS report webpage.
 
     Args:
         url (str): Complete URL to the report's HTML page
-        report_id (str): Unique identifier for the report (e.g., 'IN12522')
 
     Returns:
         str: Extracted text content from the report with preserved formatting
              and paragraph breaks
     """
-    # Add polite delay
-    time.sleep(1)
+    try:
+        # Send a request to the webpage
+        response = requests.get(url, timeout=10)
 
-    response = requests.get(url)
-    response.raise_for_status()
+        # Check if request was successful
+        if response.status_code == 200:
+            # Parse the HTML content
+            soup = BeautifulSoup(response.text, 'html.parser')
 
-    # Parse HTML
-    soup = BeautifulSoup(response.text, 'html.parser')
+            # Extract all text from the page
+            text = soup.get_text()
 
-    # Get content directly from paragraphs and headers
-    content = soup.find_all(['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'])
+            # Skip pages with no meaningful content 
+            if text and len(text.strip()) > 0:
+                return text
+            else:
+                print(f"Skipping {url}: No content found")
+                return None
+        else:
+            print(f"Request failed with status code {response.status_code}")
+            return None
 
-    full_text = '\n\n'.join([elem.get_text(strip=True) for elem in content])
-    #print("\nFirst 300 characters of the report:")
-    #print(full_text[:300] + "...")
-    return full_text
+    except requests.exceptions.RequestException as e:
+        # catch connection errors, timeouts, and other request-related exceptions
+        print(f"Request error: {e}")
+        return None
 
 
 def get_report_content(row, embedder):
@@ -85,12 +94,19 @@ def get_report_content(row, embedder):
             - full_text: The complete text content of the report
             - url: The full URL used to fetch the report
     """
+    # Check if HTML link exists
+    if pd.isna(row['latestHTML']):
+        print(f"Skipping row: No HTML link available for {row['number']}")
+        return None, None
+        
     # Construct full URL
     base_url = "https://www.everycrsreport.com/"
-    html_url = base_url + row['latestHTML']
+    html_url = base_url + str(row['latestHTML'])
 
     # Fetch the content
-    full_text = fetch_report_content(html_url, row['number'])
+    full_text = fetch_report_content(html_url)
+    #print("\nFirst 100 characters of the report:")
+    #print(full_text[:100] + "...")
     docs = embed_page(html_url, full_text, embedder)
     embedder.docs.extend(docs)
     return full_text, html_url
