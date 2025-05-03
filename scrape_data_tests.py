@@ -100,24 +100,18 @@ def test_embed_page_returns_docs_and_vectors(dummy_embedder):
 
 
 def test_create_vector_store(tmp_path: Path, dummy_embedder):
-    # 1) Build 5 dummy docs
     docs = [Document(page_content=f"doc {i}", metadata={}) for i in range(5)]
 
-    # 2) Give the embedder 5 matching 4-dim vectors
     dummy_embedder.embeddings = np.arange(5 * 4, dtype="float32").reshape(5, 4).tolist()
 
-    # 3) Create the store
     store_dir = tmp_path / "faiss_store"
     vstore = create_vector_store(docs, dummy_embedder, store_name=str(store_dir))
 
-    # Index should report exactly 5 vectors
     assert hasattr(vstore.index, "ntotal")
     assert vstore.index.ntotal == len(docs)
 
-    # Directory should have been created
     assert store_dir.exists()
 
-    # 4) Reload with LangChain and verify count
     from langchain_community.embeddings import HuggingFaceEmbeddings
     from langchain_community.vectorstores import FAISS as LCFAISS
 
@@ -127,5 +121,4 @@ def test_create_vector_store(tmp_path: Path, dummy_embedder):
     )
     assert lc_store.index.ntotal == len(docs)
 
-    # Cleanup
     shutil.rmtree(store_dir)
