@@ -19,6 +19,7 @@ def preprocess_dfs(fake:pd.DataFrame, true:pd.DataFrame) -> pd.DataFrame:
     df = pd.concat([fake, true]).reset_index(drop =True)
     df = shuffle(df)
     df.reset_index(inplace = True, drop = True)
+    print("Preprocessed Data")
     return df
 
 def start_rag_workflow(vector_store: FAISS, df: pd.DataFrame, full_output: bool = True):
@@ -120,10 +121,13 @@ def main():
     parser = argparse.ArgumentParser(description="Arguments for our main function.")
     parser.add_argument("fulloutput", help="Whether to show all of our outputs.")
     args = parser.parse_args()
+    print("Getting Embeddings")
     embeddings = HuggingFaceEmbeddings(model_name='all-MiniLM-L6-v2')
     vector_store = FAISS.load_local("CRS_Reports2", embeddings, allow_dangerous_deserialization=True)
+    print("Getting Data")
     df = preprocess_dfs(pd.read_csv("Fake.csv"), pd.read_csv("True.csv"))
     if args.fulloutput == str(False):
+        print("Testing accuracy on Full Dataset.")
         outputs = start_rag_workflow(vector_store=vector_store, df= df, full_output= False)
         outputs = np.array(outputs)
         acc = accuracy_score(outputs[:,0], outputs[:,1])
@@ -140,6 +144,7 @@ def main():
         ax.yaxis.set_ticklabels(['False', 'True'])
         plt.show()
     else:
+        print("Testing outputs on 20 indeces and showing output and labels.")
         outputs = start_rag_workflow(vector_store=vector_store, df= df, full_output= True)
         for out in outputs:
             print(f"{out[0]}\n\nLabel:{out[1]}\n\n")
