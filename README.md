@@ -40,7 +40,7 @@ Data scraping and vector db creation: python scrape_data.py (Automatically will 
 RAG and LLM message generation (main api feature):
 ```python
 - python workflow.py False #Indicates to use a dataset to create a confusion matrix and determine overall accuracy from simple True or False outputs from the LLM
-- python workflow.py True Gives details to any responses and allows user inqueries into the LLM for misinformation classification
+- python workflow.py True #Gives details to any responses and allows user inqueries into the LLM for misinformation classification
 ```
 ## Team Members
 - Kyle Thornton
