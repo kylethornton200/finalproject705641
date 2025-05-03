@@ -1,8 +1,6 @@
 import pandas as pd
 import requests
 from bs4 import BeautifulSoup
-import time
-import os
 from tqdm import tqdm
 from sentence_transformers import SentenceTransformer, util
 from langchain.schema import Document
@@ -110,8 +108,6 @@ def get_report_content(row, embedder):
     #print(full_text[:100] + "...")
         docs = embed_page(html_url, full_text, embedder)
         embedder.docs.extend(docs)
-    else:
-        print(f"")
     return full_text, html_url
 
 def get_all_reports(df, embedder):
@@ -140,7 +136,7 @@ def embed_page(url, raw_text, embedder: EmbeddedClass):
     docs = [Document(page_content=chunk, metadata={"source_url": url}) for chunk in chunks]
     return docs
 
-def create_vector_store(docs: list[Document], embedder: EmbeddedClass, store_name="CRS_Reports2"):
+def create_vector_store(docs: list[Document], embedder: EmbeddedClass, store_name="CRS_Reports2"):    
     embedding_matrix = np.asarray(embedder.embeddings, dtype="float32")
     index = faiss.IndexFlatL2(embedding_matrix.shape[1])
     index.add(embedding_matrix)
