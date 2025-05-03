@@ -39,8 +39,8 @@ def start_rag_workflow(vector_store: FAISS, df: pd.DataFrame, full_output: bool 
             title = df.iloc[ind, 0]
             contents = df.iloc[ind,1]
             labels = df.loc[ind, "Label"]
-            title_docs = vector_store.search(title, "similarity", k = 3)
-            content_docs = vector_store.search(contents, "similarity", k = 3)
+            title_docs = vector_store.search(title, "similarity", k = 5)
+            content_docs = vector_store.search(contents, "mmr", k = 5)
 
             system_prompt = f"""You are a concise fact-checker specialising in political misinformation.
                     
@@ -106,9 +106,9 @@ def start_rag_workflow(vector_store: FAISS, df: pd.DataFrame, full_output: bool 
             {
                 "role": "system",
                 "content": system_prompt,
+            },{
                 'role': 'user',
-                'content': user_prompt,
-            },
+                'content': user_prompt,},
             ],
             options = {
                 'temperature': .3
