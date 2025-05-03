@@ -3,7 +3,7 @@ import requests
 from bs4 import BeautifulSoup
 import time
 import os
-
+from tqdm import tqdm
 from sentence_transformers import SentenceTransformer, util
 from langchain.schema import Document
 import faiss
@@ -105,14 +105,17 @@ def get_report_content(row, embedder):
 
     # Fetch the content
     full_text = fetch_report_content(html_url)
+    if full_text:
     #print("\nFirst 100 characters of the report:")
     #print(full_text[:100] + "...")
-    docs = embed_page(html_url, full_text, embedder)
-    embedder.docs.extend(docs)
+        docs = embed_page(html_url, full_text, embedder)
+        embedder.docs.extend(docs)
+    else:
+        print(f"")
     return full_text, html_url
 
 def get_all_reports(df, embedder):
-    for i, row in enumerate(df.itertuples(index=False)):
+    for i, row in enumerate(tqdm(df.itertuples(index=False), total= min(df.shape[0], max_reports))):
 
         if max_reports is not None and i >= max_reports:
             print(f"[INFO] Early stop reached at {i} rows.")
@@ -129,7 +132,7 @@ def get_all_reports(df, embedder):
 
 
 def embed_page(url, raw_text, embedder: EmbeddedClass):
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=2000, chunk_overlap=200)
     chunks = text_splitter.split_text(raw_text)
     vecs   = embedder.model.encode(chunks, show_progress_bar=False)
     embedder.embeddings.extend(vecs)
@@ -137,7 +140,7 @@ def embed_page(url, raw_text, embedder: EmbeddedClass):
     docs = [Document(page_content=chunk, metadata={"source_url": url}) for chunk in chunks]
     return docs
 
-def create_vector_store(docs: list[Document], embedder: EmbeddedClass, store_name="CRS_Reports"):
+def create_vector_store(docs: list[Document], embedder: EmbeddedClass, store_name="CRS_Reports2"):
     embedding_matrix = np.asarray(embedder.embeddings, dtype="float32")
     index = faiss.IndexFlatL2(embedding_matrix.shape[1])
     index.add(embedding_matrix)
