@@ -36,7 +36,10 @@ pip install -r requirements.txt
 
 ## Installation
 
-Data scraping and vector db creation: python scrape_data.py (Automatically will run and create the vector db locally)
+Data scraping and vector db creation: 
+```python
+python scrape_data.py #Automatically will run and create the vector db locally
+```
 RAG and LLM message generation (main api feature):
 ```python
 - python workflow.py False #Indicates to use a dataset to create a confusion matrix and determine overall accuracy from simple True or False outputs from the LLM
