@@ -30,15 +30,18 @@ text, url = get_report_content(df.iloc[0])
 ```
 
 ## Requirements
+```
 pip install -r requirements.txt
+```
 
 ## Installation
 
 Data scraping and vector db creation: python scrape_data.py (Automatically will run and create the vector db locally)
-RAG and LLM message generation (main api feature): 
-- python workflow.py False (Indicates to use a dataset to create a confusion matrix and determine overall accuracy from simple True or False outputs from the LLM)
-- python workflow.py True (Gives details to any responses and allows user inqueries into the LLM for misinformation classification)
-
+RAG and LLM message generation (main api feature):
+```python
+- python workflow.py False #Indicates to use a dataset to create a confusion matrix and determine overall accuracy from simple True or False outputs from the LLM
+- python workflow.py True #Gives details to any responses and allows user inqueries into the LLM for misinformation classification
+```
 ## Team Members
 - Kyle Thornton
 - Mengyu Tu
