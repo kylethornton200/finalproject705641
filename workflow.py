@@ -120,8 +120,8 @@ def main():
     parser = argparse.ArgumentParser(description="Arguments for our main function.")
     parser.add_argument("fulloutput", help="Whether to show all of our outputs.")
     args = parser.parse_args()
-    Embeddings = HuggingFaceEmbeddings(model_name='all-MiniLM-L6-v2')
-    vector_store = FAISS.load_local("CRS_Reports2", Embeddings, allow_dangerous_deserialization=True)
+    embeddings = HuggingFaceEmbeddings(model_name='all-MiniLM-L6-v2')
+    vector_store = FAISS.load_local("CRS_Reports2", embeddings, allow_dangerous_deserialization=True)
     df = preprocess_dfs(pd.read_csv("Fake.csv"), pd.read_csv("True.csv"))
     if args.fulloutput == str(False):
         outputs = start_rag_workflow(vector_store=vector_store, df= df, full_output= False)
@@ -136,7 +136,8 @@ def main():
         sn.heatmap(df_cm, annot=True, annot_kws={"size": 16}) # font size
         plt.xlabel("Ground Truth")
         plt.ylabel("Predicted")
-        ax.xaxis.set_ticklabels(['False', 'True']); ax.yaxis.set_ticklabels(['False', 'True'])
+        ax.xaxis.set_ticklabels(['False', 'True'])
+        ax.yaxis.set_ticklabels(['False', 'True'])
         plt.show()
     else:
         outputs = start_rag_workflow(vector_store=vector_store, df= df, full_output= True)
