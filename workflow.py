@@ -14,6 +14,16 @@ import matplotlib.pyplot as plt
 import argparse
 
 def preprocess_dfs(fake:pd.DataFrame, true:pd.DataFrame) -> pd.DataFrame:
+    """
+    Preprocesses the dataset adding labels and concatenating them.
+
+    Args:
+        fake (pd.DataFrame): a dataframe containing the articles with missinformation.
+        true (pd.DataFrame): a dataframe containing the data without missinformation.
+
+    Returns:
+        pd.DataFrame: shuffled dataframe with the text, title, and lable of the articles.
+    """
     fake["Label"] = [False]*len(fake)
     true["Label"] = [True]*len(true)
     df = pd.concat([fake, true]).reset_index(drop =True)
@@ -27,11 +37,12 @@ def start_rag_workflow(vector_store: FAISS, df: pd.DataFrame, full_output: bool 
     Starts the rag workflow based upon if we want to test against our data set.
 
     Args:
-        url (str): Complete URL to the report's HTML page
+        vector_store (FAISS): vector integration that holds the embeddings and the vector database allowing us to pass a query in and get docs out.
+        df (pd.DataFrame): a dataframe containing the data we wish to determine if missinformation is present.
+        full_output (bool): a boolean variable determining if we want to get only True or False, or a full output discussing the missinformation present.
 
     Returns:
-        str: Extracted text content from the report with preserved formatting
-             and paragraph breaks
+        tuple(str, str): has both the ground truth label of the article and the predicted value of if there is missinformation present. Different if full_output is true or false.
     """
     if full_output:
         indeces = np.random.randint(0,len(df)-1, [20])
@@ -82,7 +93,7 @@ def start_rag_workflow(vector_store: FAISS, df: pd.DataFrame, full_output: bool 
             options = {
                 'temperature': .3
             })
-            final.append((response['message']['content'], labels))
+            final.append((response['message']['content'], str(labels)))
         return final
     else:
         test = []
@@ -118,6 +129,15 @@ def start_rag_workflow(vector_store: FAISS, df: pd.DataFrame, full_output: bool 
         return test
 
 def main():
+    """
+    Main function that either shows the output or collects accuracy data regarding the missinformation present or not present.
+
+    Args:
+        full_output (bool): a boolean variable determining if we want to get only True or False, or a full output discussing the missinformation present.
+        
+    Returns:
+        None
+    """
     parser = argparse.ArgumentParser(description="Arguments for our main function.")
     parser.add_argument("fulloutput", help="Whether to show all of our outputs.")
     args = parser.parse_args()
@@ -148,5 +168,6 @@ def main():
         outputs = start_rag_workflow(vector_store=vector_store, df= df, full_output= True)
         for out in outputs:
             print(f"{out[0]}\n\nLabel:{out[1]}\n\n")
+
 if __name__ == "__main__":
     main()
