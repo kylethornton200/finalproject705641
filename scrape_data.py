@@ -4,6 +4,7 @@ import faiss
 import numpy as np
 import pandas as pd
 import requests
+import logging
 from bs4 import BeautifulSoup
 from langchain.schema import Document
 from langchain.text_splitter import RecursiveCharacterTextSplitter
@@ -30,6 +31,7 @@ milestones = [
 ]
 MAX_REPORTS = 30000
 
+logger = logging.getLogger(__name__)
 
 class EmbeddedClass:
     """Holds the embedding model plus accumulated vectors and docs."""
@@ -59,7 +61,7 @@ def scrape_crs_reports():
     """
     # Direct CSV download
     df = pd.read_csv("https://www.everycrsreport.com/reports.csv")
-    print("Successfully downloaded CSV file")
+    logger.info("Successfully downloaded CSV file")
     return df
 
 
@@ -89,12 +91,12 @@ def fetch_report_content(url):
             # Skip pages with no meaningful content
             if text and len(text.strip()) > 0:
                 return text
-        print(f"Skipping {url}: No content found")
+        logger.info(f"Skipping {url}: No content found")
         return None
 
     except requests.exceptions.RequestException as e:
         # catch connection errors, timeouts, and other request-related exceptions
-        print(f"Request error: {e}")
+        logger.error(f"Request error: {e}")
         return None
 
 
@@ -110,7 +112,7 @@ def get_report_content(row, embedder):
     """
     # Check if HTML link exists
     if pd.isna(row["latestHTML"]):
-        print(f"Skipping row: No HTML link available for {row['number']}")
+        logger.info(f"Skipping row: No HTML link available for {row['number']}")
         return None, None
 
     # Construct full URL
@@ -141,16 +143,16 @@ def get_all_reports(df, embedder):
     ):
 
         if MAX_REPORTS is not None and i >= MAX_REPORTS:
-            print(f"[INFO] Early stop reached at {i} rows.")
+            logger.info(f"[INFO] Early stop reached at {i} rows.")
             break
 
         full_text, html_url = get_report_content(row._asdict(), embedder)
 
         if not full_text:
-            print(f"[WARN] Row {i}: failed to fetch report (url={html_url})")
+            logger.info(f"[WARN] Row {i}: failed to fetch report (url={html_url})")
 
         if i in milestones:
-            print(f"Reached milestone: collected {i} reports so far")
+            logger.info(f"Reached milestone: collected {i} reports so far")
 
 
 def embed_page(url, raw_text, embedder: EmbeddedClass):
@@ -224,11 +226,11 @@ if __name__ == "__main__":
     )
 
     embedder = EmbeddedClass()
-    print("=" * 12 + "Starting scrape of crs reports" + "=" * 12)
+    logger.info("=" * 12 + "Starting scrape of crs reports" + "=" * 12)
     get_all_reports(df, embedder)
 
-    print("=" * 12 + "Creating vector store for embedding indexes" + "=" * 12)
+    logger.info("=" * 12 + "Creating vector store for embedding indexes" + "=" * 12)
     v_store = create_vector_store(embedder.docs, embedder)
 
     if v_store:
-        print("Successfully created vector db CRS_Reports")
+        logger.info("Successfully created vector db CRS_Reports")
