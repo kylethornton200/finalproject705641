@@ -3,10 +3,11 @@ Misinformation has been a prevelant issue throughout social media as users can b
 Our goal is to provide users a way to combat opinionated/biased/and false information using a Chatbot. This involves a RAG pipeline with a knowledge base consisting of nearly 20,000
 congressional reports that include domestic and foreign information that are carefully chunked and embedded in order to get proper retrieval from our vector database. From here, users can input their statements or questions and we will retrieve relevant documents to their inquiry and determine from this context whether the given query was misleading or supported.
 
+![Architecture Workflow](https://github.com/user-attachments/assets/3af3bb61-6788-405f-8cdd-f47b79d3b051)
 ## Dataset
 Congressional Research Service (CRS) Reports Data Collection [EveryCRSReport.com](https://www.everycrsreport.com/)
 - 22,195 CRS reports available.
-  
+
 ### Tools for scraping CRS reports text data.
 ```markdown
 ├── crs_reports.csv      # Dataset containing CRS report metadata
@@ -23,6 +24,7 @@ from scrape_data import get_report_content
 # Read the CSV file
 df = pd.read_csv('crs_reports.csv', header=0, names=[
      'number', 'url', 'sha1', 'latestPubDate',
+
      'title', 'latestPDF', 'latestHTML'])
 
 # Process reports
