@@ -1,4 +1,6 @@
 import argparse
+import logging
+import time
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -10,6 +12,7 @@ from ollama import ChatResponse, chat
 from sklearn.metrics import accuracy_score, confusion_matrix
 from sklearn.utils import shuffle
 
+logger = logging.getLogger(__name__)
 
 def preprocess_dfs(fake: pd.DataFrame, true: pd.DataFrame) -> pd.DataFrame:
     """
@@ -22,12 +25,13 @@ def preprocess_dfs(fake: pd.DataFrame, true: pd.DataFrame) -> pd.DataFrame:
     Returns:
         pd.DataFrame: shuffled dataframe with the text, title, and lable of the articles.
     """
+    logger.info("Preprocessing Data")
     fake["Label"] = [False] * len(fake)
     true["Label"] = [True] * len(true)
     df = pd.concat([fake, true]).reset_index(drop=True)
     df = shuffle(df)
     df.reset_index(inplace=True, drop=True)
-    print("Preprocessed Data")
+    logger.info("Preprocessed Data")
     return df
 
 
@@ -46,13 +50,13 @@ def start_rag_workflow(vector_store: FAISS, df: pd.DataFrame, full_output: bool 
     if full_output:
         indeces = np.random.randint(0, len(df) - 1, [20])
         final = []
+        logger.info("Begining Full Output")
         for ind in indeces:
             title = df.iloc[ind, 0]
             contents = df.iloc[ind, 1]
             labels = df.loc[ind, "Label"]
-            title_docs = vector_store.search(title, "similarity", k=5)
-            content_docs = vector_store.search(contents, "mmr", k=5)
-
+            title_docs = vector_store.search(title, "similarity", k=3)
+            content_docs = vector_store.search(contents, "mmr", k=3)
             system_prompt = f"""You are a concise fact-checker specialising in political misinformation.
                     
                     You will receive:
@@ -95,13 +99,15 @@ def start_rag_workflow(vector_store: FAISS, df: pd.DataFrame, full_output: bool 
         return final
     else:
         test = []
-        for item, row in df[:100:].iterrows():
+        logger.info("Begining Dataset Analysis")
+        for item, row in df[:len(df)//2 :].iterrows():
             title = df.iloc[item, 0]
             contents = df.iloc[item, 1]
             labels = df.loc[item, "Label"]
-            title_docs = vector_store.search(title, "similarity", k=5)
-            conent_docs = vector_store.search(contents, "mmr", k=5)
-
+            title_docs = vector_store.search(title, "similarity", k=3)
+            conent_docs = vector_store.search(contents, "mmr", k=3)
+            if item % 5000 == 0:
+                logger.info(f"{item} rows completed")
             system_prompt = f"""
             You are a fact checker.
             Use this context as ground truth.
@@ -140,24 +146,26 @@ def main():
     Returns:
         None
     """
+    logging.basicConfig(filename='workflow.log', level=logging.INFO)
     parser = argparse.ArgumentParser(description="Arguments for our main function.")
     parser.add_argument("fulloutput", help="Whether to show all of our outputs.")
     args = parser.parse_args()
-    print("Getting Embeddings")
+    logger.info("Getting Embeddings")
     embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
     vector_store = FAISS.load_local(
         "CRS_Reports2", embeddings, allow_dangerous_deserialization=True
     )
-    print("Getting Data")
+    logger.info("Getting Data")
     df = preprocess_dfs(pd.read_csv("Fake.csv"), pd.read_csv("True.csv"))
     if args.fulloutput == str(False):
-        print("Testing accuracy on Full Dataset.")
+        logger.info("Testing accuracy on Full Dataset.")
         outputs = start_rag_workflow(
             vector_store=vector_store, df=df, full_output=False
         )
         outputs = np.array(outputs)
         acc = accuracy_score(outputs[:, 0], outputs[:, 1])
         print(acc)
+        logger.info("Finished Accuracy Calculation Making Figure.")
         ax = plt.subplot()
         c = confusion_matrix(outputs[:, 0], outputs[:, 1])
         normed_c = c / np.sum(c, axis=1, keepdims=True)
@@ -168,13 +176,17 @@ def main():
         plt.ylabel("Predicted")
         ax.xaxis.set_ticklabels(["False", "True"])
         ax.yaxis.set_ticklabels(["False", "True"])
+        timestamp = time.strftime("%Y%m%d-%H%M%S")
+        filename = f'confusionmatrix_{timestamp}.png'
+        plt.savefig(filename, dpi=300, bbox_inches='tight')
         plt.show()
+        logger.info(f"Finished running dataset analysis. Saved figure to {filename}")
     else:
-        print("Testing outputs on 20 indeces and showing output and labels.")
+        logger.info("Testing outputs on 20 indeces and showing output and labels.")
         outputs = start_rag_workflow(vector_store=vector_store, df=df, full_output=True)
-        for out in outputs:
-            print(f"{out[0]}\n\nLabel:{out[1]}\n\n")
-
+        with open("output.txt", "w") as f:
+            for out in outputs:
+                f.write(f"{out[0]}\n\nLabel:{out[1]}\n\n")
 
 if __name__ == "__main__":
     main()
